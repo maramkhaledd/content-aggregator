@@ -4,7 +4,9 @@ import requests
 from bs4 import BeautifulSoup
 
 
-# def handle_client(client_socket):
+def handle_client(client_socket):
+    try:
+      
 
 
 def start_server():
