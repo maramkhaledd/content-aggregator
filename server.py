@@ -4,8 +4,31 @@ import requests
 from bs4 import BeautifulSoup
 
 
-def handle_client(client_socket):
+def handle_client_request(client_socket):
     try:
+        data_length_bytes = client_socket.recv(4)
+        data_length = int.from_bytes(data_length_bytes, 'big')
+
+        data = b""
+        while len(data) < data_length:
+            data += client_socket.recv(min(4096, data_length - len(data)))
+
+        domains = pickle.loads(data)
+        all_articles = []
+        for domain in domains:
+            if not domain.startswith(("http://", "https://")):
+                domain = f"https://{domain}"
+            articles = fetch_articles(domain, max_articles=10)
+            all_articles.extend(articles)
+
+        response = pickle.dumps(all_articles)
+        response_length = len(response)
+        client_socket.sendall(response_length.to_bytes(4, 'big'))
+        client_socket.sendall(response)
+        client_socket.close()
+    except Exception as e:
+        print(f"Error handling client request: {e}")
+        client_socket.close()
       
 
 
@@ -32,7 +55,7 @@ def start_server():
         # addr is the address of the client.
         client_socket, addr = s.accept()
         print(f"Connection from {addr} has been established.")
-        handle_client(client_socket)
+        handle_client_request(client_socket)
 
 
 if __name__ == "__main__":
