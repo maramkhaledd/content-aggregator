@@ -2,8 +2,22 @@ import socket
 import pickle
 import requests
 from bs4 import BeautifulSoup
+from urllib.parse import urljoin, urlparse
 
-#def process_url()
+#def is_valid_news_link():
+
+def process_url(url, base_url):
+    """Convert relative URL to absolute URL and validate it."""
+    if not url or url == "No link available":
+        return "No link available"
+
+    # Convert relative URL to absolute URL
+    absolute_url = urljoin(base_url, url)
+
+    # Validate the URL
+    if is_valid_news_link(absolute_url, base_url):
+        return absolute_url
+    return "No link available"
 
 def fetch_articles(url, max_articles=30):
     try:
