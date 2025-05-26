@@ -73,7 +73,7 @@ def fetch_articles(url, max_articles=30):
     try:
         response = requests.get(url)
         if response.status_code != 200:
-            return [("Failed to fetch data", f"HTTP {response.status_code}")]
+            return []
 
         soup = BeautifulSoup(response.text, "html.parser")
         articles = []
@@ -87,7 +87,7 @@ def fetch_articles(url, max_articles=30):
             link = process_url(
                 link["href"], url) if link else "No link available"
 
-            if title and title not in seen_titles and link != "No link available":
+            if title and len(title) > 10 and title not in seen_titles and link != "No link available":
                 articles.append((title, link))
                 seen_titles.add(title)
 
@@ -99,13 +99,13 @@ def fetch_articles(url, max_articles=30):
                 link = process_url(
                     link["href"], url) if link else "No link available"
 
-                if title and title not in seen_titles and link != "No link available":
+                if title and len(title) > 10 and title not in seen_titles and link != "No link available":
                     articles.append((title, link))
                     seen_titles.add(title)
 
-        return articles[:max_articles] if articles else [("No articles found", "")]
+        return articles[:max_articles]
     except Exception as e:
-        return [("Error occurred", str(e))]
+        return []
 
 
 def handle_client_request(client_socket):
