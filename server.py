@@ -4,7 +4,31 @@ import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin, urlparse
 
-#def is_valid_news_link():
+def is_valid_news_link(url, base_url):
+    """Check if the link is a valid news article link."""
+    # Skip social media and common non-news domains
+    social_domains = {'facebook.com', 'twitter.com', 'instagram.com', 'linkedin.com',
+                      'youtube.com', 'pinterest.com', 'tiktok.com', 'reddit.com'}
+
+    # Parse the URL
+    parsed_url = urlparse(url)
+    parsed_base = urlparse(base_url)
+
+    # Skip if it's a social media domain
+    if any(domain in parsed_url.netloc.lower() for domain in social_domains):
+        return False
+
+    # Skip if it's not from the same domain as the base URL
+    if parsed_url.netloc and parsed_url.netloc != parsed_base.netloc:
+        return False
+
+    # Skip common non-article paths
+    skip_paths = {'/login', '/signup', '/subscribe',
+                  '/account', '/profile', '/search'}
+    if any(path in parsed_url.path.lower() for path in skip_paths):
+        return False
+
+    return True
 
 def process_url(url, base_url):
     """Convert relative URL to absolute URL and validate it."""
