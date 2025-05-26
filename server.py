@@ -3,6 +3,45 @@ import pickle
 import requests
 from bs4 import BeautifulSoup
 
+#def process_url()
+
+def fetch_articles(url, max_articles=30):
+    try:
+        response = requests.get(url)
+        if response.status_code != 200:
+            return [("Failed to fetch data", f"HTTP {response.status_code}")]
+
+        soup = BeautifulSoup(response.text, 'html.parser')
+        articles = []
+        seen_titles = set()
+
+        # First, look for structured content
+        for tag in soup.find_all(['article', 'div', 'section']):
+            title = tag.find(['h1', 'h2', 'h3'])
+            title = title.get_text(strip=True) if title else None
+            link = tag.find('a', href=True)
+            link = process_url(
+                link['href'], url) if link else "No link available"
+
+            if title and title not in seen_titles and link != "No link available":
+                articles.append((title, link))
+                seen_titles.add(title)
+
+        # Only fallback to global <p> if no articles were found
+        if not articles:
+            for tag in soup.find_all('p'):
+                title = tag.get_text(strip=True)
+                link = tag.find_parent('a', href=True)
+                link = process_url(
+                    link['href'], url) if link else "No link available"
+
+                if title and title not in seen_titles and link != "No link available":
+                    articles.append((title, link))
+                    seen_titles.add(title)
+
+        return articles[:max_articles] if articles else [("No articles found", "")]
+    except Exception as e:
+        return [("Error occurred", str(e))]
 
 def handle_client_request(client_socket):
     try:
