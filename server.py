@@ -4,7 +4,9 @@ import requests
 from bs4 import BeautifulSoup
 
     
-
+#def handle_client(client_socket):
+    
+        
 
 def start_server():
     #AF_INET: specifies the address family — here, IPv4.
@@ -31,7 +33,7 @@ def start_server():
     # addr is the address of the client.
         client_socket, addr = s.accept()
         print(f"Connection from {addr} has been established.")
-        handle_clienrt(client_socket)
+        handle_client(client_socket)
 
 
 if __name__ == "__main__":
