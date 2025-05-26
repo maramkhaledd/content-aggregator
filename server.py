@@ -32,8 +32,24 @@ def is_valid_news_link(url, base_url):
         return False
 
     # Skip common non-article paths
-    skip_paths = {"/login", "/signup", "/subscribe", "/account", "/profile", "/search"}
+    skip_paths = {
+        "/login", "/signup", "/subscribe", "/account", "/profile", "/search",
+        "/category", "/categories", "/section", "/sections", "/tag", "/tags",
+        "/author", "/authors", "/archive", "/archives"
+    }
     if any(path in parsed_url.path.lower() for path in skip_paths):
+        return False
+
+    # Skip URLs that are likely main pages or category pages
+    path_parts = parsed_url.path.strip('/').split('/')
+
+    # Skip if the URL is too short (likely a main page)
+    if len(path_parts) < 2:
+        return False
+
+    # Skip if the URL doesn't contain any numbers or dates (common in news articles)
+    has_numbers = any(any(c.isdigit() for c in part) for part in path_parts)
+    if not has_numbers:
         return False
 
     return True
@@ -68,7 +84,8 @@ def fetch_articles(url, max_articles=30):
             title = tag.find(["h1", "h2", "h3"])
             title = title.get_text(strip=True) if title else None
             link = tag.find("a", href=True)
-            link = process_url(link["href"], url) if link else "No link available"
+            link = process_url(
+                link["href"], url) if link else "No link available"
 
             if title and title not in seen_titles and link != "No link available":
                 articles.append((title, link))
@@ -79,7 +96,8 @@ def fetch_articles(url, max_articles=30):
             for tag in soup.find_all("p"):
                 title = tag.get_text(strip=True)
                 link = tag.find_parent("a", href=True)
-                link = process_url(link["href"], url) if link else "No link available"
+                link = process_url(
+                    link["href"], url) if link else "No link available"
 
                 if title and title not in seen_titles and link != "No link available":
                     articles.append((title, link))
