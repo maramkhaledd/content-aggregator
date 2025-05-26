@@ -4,11 +4,20 @@ import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin, urlparse
 
+
 def is_valid_news_link(url, base_url):
     """Check if the link is a valid news article link."""
     # Skip social media and common non-news domains
-    social_domains = {'facebook.com', 'twitter.com', 'instagram.com', 'linkedin.com',
-                      'youtube.com', 'pinterest.com', 'tiktok.com', 'reddit.com'}
+    social_domains = {
+        "facebook.com",
+        "twitter.com",
+        "instagram.com",
+        "linkedin.com",
+        "youtube.com",
+        "pinterest.com",
+        "tiktok.com",
+        "reddit.com",
+    }
 
     # Parse the URL
     parsed_url = urlparse(url)
@@ -23,12 +32,12 @@ def is_valid_news_link(url, base_url):
         return False
 
     # Skip common non-article paths
-    skip_paths = {'/login', '/signup', '/subscribe',
-                  '/account', '/profile', '/search'}
+    skip_paths = {"/login", "/signup", "/subscribe", "/account", "/profile", "/search"}
     if any(path in parsed_url.path.lower() for path in skip_paths):
         return False
 
     return True
+
 
 def process_url(url, base_url):
     """Convert relative URL to absolute URL and validate it."""
@@ -43,23 +52,23 @@ def process_url(url, base_url):
         return absolute_url
     return "No link available"
 
+
 def fetch_articles(url, max_articles=30):
     try:
         response = requests.get(url)
         if response.status_code != 200:
             return [("Failed to fetch data", f"HTTP {response.status_code}")]
 
-        soup = BeautifulSoup(response.text, 'html.parser')
+        soup = BeautifulSoup(response.text, "html.parser")
         articles = []
         seen_titles = set()
 
         # First, look for structured content
-        for tag in soup.find_all(['article', 'div', 'section']):
-            title = tag.find(['h1', 'h2', 'h3'])
+        for tag in soup.find_all(["article", "div", "section"]):
+            title = tag.find(["h1", "h2", "h3"])
             title = title.get_text(strip=True) if title else None
-            link = tag.find('a', href=True)
-            link = process_url(
-                link['href'], url) if link else "No link available"
+            link = tag.find("a", href=True)
+            link = process_url(link["href"], url) if link else "No link available"
 
             if title and title not in seen_titles and link != "No link available":
                 articles.append((title, link))
@@ -67,11 +76,10 @@ def fetch_articles(url, max_articles=30):
 
         # Only fallback to global <p> if no articles were found
         if not articles:
-            for tag in soup.find_all('p'):
+            for tag in soup.find_all("p"):
                 title = tag.get_text(strip=True)
-                link = tag.find_parent('a', href=True)
-                link = process_url(
-                    link['href'], url) if link else "No link available"
+                link = tag.find_parent("a", href=True)
+                link = process_url(link["href"], url) if link else "No link available"
 
                 if title and title not in seen_titles and link != "No link available":
                     articles.append((title, link))
@@ -81,10 +89,11 @@ def fetch_articles(url, max_articles=30):
     except Exception as e:
         return [("Error occurred", str(e))]
 
+
 def handle_client_request(client_socket):
     try:
         data_length_bytes = client_socket.recv(4)
-        data_length = int.from_bytes(data_length_bytes, 'big')
+        data_length = int.from_bytes(data_length_bytes, "big")
 
         data = b""
         while len(data) < data_length:
@@ -100,13 +109,12 @@ def handle_client_request(client_socket):
 
         response = pickle.dumps(all_articles)
         response_length = len(response)
-        client_socket.sendall(response_length.to_bytes(4, 'big'))
+        client_socket.sendall(response_length.to_bytes(4, "big"))
         client_socket.sendall(response)
         client_socket.close()
     except Exception as e:
         print(f"Error handling client request: {e}")
         client_socket.close()
-      
 
 
 def start_server():
