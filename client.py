@@ -6,8 +6,20 @@ from tkinter import messagebox
 
 #def submit_domains:
 
+#triggered when user clicks "Back" button
+def reset_to_query():
+  articles_list.delete(0,tk.END) #Clear the articles list; 0-> index of first item, tk.END-> index of last item
+  text.delete("1.0", tk.END) #Clear input text
+  articles_frame.pack_forget() #hide articles display frame.
+  query_frame.pack(fill="both", expand=True) #make the query_frame visible again
 
-#def reset_to_query:
+
+  
+   
+
+
+
+
 
 
 
