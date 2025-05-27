@@ -13,10 +13,11 @@ class NewsAggregatorApp:
         self.root = root
         self.root.title("News Content Aggregator")
         self.root.geometry("1000x800")
-
         # Configure style
         self.style = ttk.Style()
         self.style.theme_use("clam")
+
+        self.preset_domains = ["bbc.com", "cnn.com", "theguardian.com"]
 
         # Colors
         self.bg_color = "#f8f9fa"
@@ -107,6 +108,29 @@ class NewsAggregatorApp:
         )
         self.instructions.pack(pady=(0, 15))
 
+        # --- ADD BUTTONS FRAME ---
+        self.button_frame = ttk.Frame(self.query_frame, style="Custom.TFrame")
+        self.button_frame.pack(pady=(0, 15))  # space below buttons
+
+        for domain in self.preset_domains:
+            button = tk.Button(
+                self.button_frame,
+                text=domain,
+                font=("Helvetica", 12, "bold"),
+                bg="#e3f2fd",
+                fg="#0d47a1",
+                relief="flat",
+                bd=0,
+                padx=15,
+                pady=6,
+                cursor="hand2",
+                highlightbackground="#bbdefb",
+                highlightthickness=1,
+                command=lambda d=domain: self.insert_domain(d)
+            )
+            button.pack(side=tk.LEFT, padx=5)
+
+        # The existing text input frame and text widget follows
         self.text_frame = ttk.Frame(self.query_frame, style="Custom.TFrame")
         self.text_frame.pack(fill="both", expand=True, pady=15)
 
@@ -157,6 +181,7 @@ class NewsAggregatorApp:
             highlightbackground="#e0e0e0",
             highlightcolor=self.accent_color,
         )
+        
         self.articles_text.tag_configure("link", foreground=self.link_color, underline=1, font=("Helvetica", 12))
         self.articles_text.tag_configure("title", font=("Helvetica", 13, "bold"), foreground=self.accent_color)
         self.articles_text.tag_bind("link", "<Button-1>", self.open_link)
@@ -196,6 +221,11 @@ class NewsAggregatorApp:
 
         # Fetch latest news for homepage at startup
         self.load_latest_news_on_homepage()
+
+    def insert_domain(self, domain):
+        # Clear existing text and insert the clicked domain
+        self.text.delete("1.0", tk.END)
+        self.text.insert(tk.END, domain + "\n")
 
     def open_home_link(self, event):
         index = self.home_news_text.index(f"@{event.x},{event.y}")
@@ -256,56 +286,57 @@ class NewsAggregatorApp:
             self.home_news_text.insert(tk.END, "\n")
 
     def submit_domains(self):
-        raw_text = self.text.get("1.0", tk.END).strip()
-        if not raw_text:
-            messagebox.showwarning("Input Error", "Please enter at least one website domain.")
+        domains_input = self.text.get("1.0", tk.END).strip()
+        if not domains_input:
+            messagebox.showwarning("Input needed", "Please enter one or more website domains.")
             return
 
-        domains = [line.strip() for line in raw_text.splitlines() if line.strip()]
-        self.fetch_articles(domains)
+        domains = [line.strip() for line in domains_input.splitlines() if line.strip()]
+        # Simple domain validation
+        domain_pattern = re.compile(r"^(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$")
+        for d in domains:
+            if not domain_pattern.match(d):
+                messagebox.showerror("Invalid domain", f"The domain '{d}' is not valid.")
+                return
 
-    def fetch_articles(self, domains):
-        def worker():
-            try:
-                self.root.after(0, lambda: self.show_loading("Fetching articles..."))
-                serialized_data = pickle.dumps(domains)
-                client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                client_socket.connect(("localhost", 5050))
+        self.loading_label.config(text="Loading articles...")
+        self.status_var.set("Fetching articles...")
+        self.submit_button.config(state=tk.DISABLED)
 
-                client_socket.sendall(len(serialized_data).to_bytes(4, "big"))
-                client_socket.sendall(serialized_data)
+        threading.Thread(target=self.fetch_articles_thread, args=(domains,), daemon=True).start()
 
-                response_length_bytes = client_socket.recv(4)
-                response_length = int.from_bytes(response_length_bytes, "big")
-                data = b""
-                while len(data) < response_length:
-                    data += client_socket.recv(min(4096, response_length - len(data)))
+    def fetch_articles_thread(self, domains):
+        try:
+            serialized_domains = pickle.dumps(domains)
+            client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            client_socket.connect(("localhost", 5050))
 
-                articles = pickle.loads(data)
-                self.root.after(0, lambda: self.display_articles(articles))
-                self.root.after(0, lambda: self.show_loading(""))
-            except Exception as e:
-                self.root.after(0, lambda: self.show_loading(""))
-                messagebox.showerror("Error", f"Failed to fetch articles: {e}")
-            finally:
-                client_socket.close()
+            client_socket.sendall(len(serialized_domains).to_bytes(4, "big"))
+            client_socket.sendall(serialized_domains)
 
-        threading.Thread(target=worker, daemon=True).start()
+            response_length_bytes = client_socket.recv(4)
+            response_length = int.from_bytes(response_length_bytes, "big")
+            data = b""
+            while len(data) < response_length:
+                data += client_socket.recv(min(4096, response_length - len(data)))
 
-    def show_loading(self, message):
-        self.loading_label.config(text=message)
+            articles = pickle.loads(data)
+            self.root.after(0, lambda: self.display_articles(articles))
+        except Exception as e:
+            self.root.after(0, lambda: messagebox.showerror("Error", f"Failed to fetch articles: {e}"))
+            self.root.after(0, self.reset_to_query)
+        finally:
+            client_socket.close()
 
     def display_articles(self, articles):
-        self.links.clear()
         self.query_frame.pack_forget()
         self.articles_frame.pack(fill="both", expand=True)
 
-        self.articles_text.config(state=tk.NORMAL)
         self.articles_text.delete("1.0", tk.END)
+        self.links.clear()
 
         if not articles:
-            self.articles_text.insert(tk.END, "No articles found.", "title")
-            self.articles_text.config(state=tk.DISABLED)
+            self.articles_text.insert(tk.END, "No articles found for the given domains.", "title")
             return
 
         for idx, (title, link) in enumerate(articles, start=1):
@@ -318,11 +349,16 @@ class NewsAggregatorApp:
                 self.articles_text.insert(tk.END, "    ❌ No link available\n")
             self.articles_text.insert(tk.END, "\n")
 
-        self.articles_text.config(state=tk.DISABLED)
+        self.loading_label.config(text="")
+        self.status_var.set("Ready")
+        self.submit_button.config(state=tk.NORMAL)
 
     def reset_to_query(self):
         self.articles_frame.pack_forget()
         self.query_frame.pack(fill="both", expand=True)
+        self.status_var.set("Ready")
+        self.loading_label.config(text="")
+        self.submit_button.config(state=tk.NORMAL)
 
     def open_link(self, event):
         index = self.articles_text.index(f"@{event.x},{event.y}")
@@ -330,7 +366,6 @@ class NewsAggregatorApp:
         if line in self.links:
             webbrowser.open(self.links[line])
             self.status_var.set(f"Opening: {self.links[line]}")
-
 
 
 if __name__ == "__main__":
