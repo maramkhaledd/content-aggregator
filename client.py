@@ -224,7 +224,7 @@ class NewsAggregatorApp:
 
     def insert_domain(self, domain):
         # Clear existing text and insert the clicked domain
-        self.text.delete("1.0", tk.END)
+      
         self.text.insert(tk.END, domain + "\n")
 
     def open_home_link(self, event):
@@ -367,7 +367,13 @@ class NewsAggregatorApp:
             webbrowser.open(self.links[line])
             self.status_var.set(f"Opening: {self.links[line]}")
 
-
+    def insert_domain(self, domain):
+            current_text = self.text.get("1.0", tk.END).strip()
+            if current_text:
+                self.text.insert(tk.END, f"\n{domain}")
+            else:
+                self.text.insert(tk.END,domain)
+                
 if __name__ == "__main__":
     root = tk.Tk()
     app = NewsAggregatorApp(root)
